@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:latest
+    # container_name: postgres_go_heights
+    restart: unless-stopped
+    ports:
+      - ${WSGO_DATABASE_PORT}:5432
+    environment:
+      POSTGRES_USER: ${WSGO_DATABASE_USER}
+      POSTGRES_PASSWORD: ${WSGO_DATABASE_PASSWORD}
+      POSTGRES_DB: ${WSGO_DATABASE_NAME}
+    volumes:
+      - db:/var/lib/postgresql/data
+
+volumes:
+  db:
+    driver: local

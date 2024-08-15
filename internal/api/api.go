@@ -118,6 +118,7 @@ func (h *apiHandler) handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	delete(h.subscribers[rawRoomID], c)
 	h.mu.Unlock()
 }
+
 func (h *apiHandler) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 	type _body struct {
 		Theme string `json:"theme"`

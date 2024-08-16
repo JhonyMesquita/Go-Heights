@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	log.Println("Server is running...")
 	if err := godotenv.Load(); err != nil {
 		panic(err)
 	}
@@ -42,6 +44,7 @@ func main() {
 	handler := api.NewHandler(pgstore.New(pool))
 
 	go func() {
+		log.Println("Starting server on :8080")
 		if err := http.ListenAndServe(":8080", handler); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				panic(err)

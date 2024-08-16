@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -22,7 +24,7 @@ type apiHandler struct {
 	r           *chi.Mux
 	upgrader    websocket.Upgrader
 	subscribers map[string]map[*websocket.Conn]context.CancelFunc
-	mu          *sync.Mutex
+	mu          sync.Mutex
 }
 
 func (h *apiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +36,7 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 		q:           q,
 		upgrader:    websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 		subscribers: make(map[string]map[*websocket.Conn]context.CancelFunc),
-		mu:          &sync.Mutex{},
+		mu:          sync.Mutex{},
 	}
 
 	r := chi.NewRouter()
@@ -75,9 +77,12 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 }
 
 func (h *apiHandler) handleSubscribe(w http.ResponseWriter, r *http.Request) {
+	log.Println("Entering handleSubscribe")
 	rawRoomID := chi.URLParam(r, "room_id")
+	log.Println("rawRoomID:", rawRoomID)
 	roomID, err := uuid.Parse(rawRoomID)
 	if err != nil {
+		log.Println("Invalid room ID:", rawRoomID)
 		http.Error(w, "invalid room id", http.StatusBadRequest)
 		return
 	}
@@ -85,15 +90,18 @@ func (h *apiHandler) handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	_, err = h.q.GetRoom(r.Context(), roomID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			log.Println("Room not found:", roomID)
 			http.Error(w, "room not found", http.StatusNotFound)
 			return
 		}
+		log.Println("Error getting room:", err)
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
 	c, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Println("Failed to upgrade connection:", err)
 		slog.Warn("failed to upgrade connection", "error", err)
 		http.Error(w, "failed to upgrade connection", http.StatusInternalServerError)
 		return
@@ -107,6 +115,7 @@ func (h *apiHandler) handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.subscribers[rawRoomID]; !ok {
 		h.subscribers[rawRoomID] = make(map[*websocket.Conn]context.CancelFunc)
 	}
+	log.Println("New client connected:", r.RemoteAddr)
 	slog.Info("new client connected", "room_id", rawRoomID, "client_ip", r.RemoteAddr)
 	h.subscribers[rawRoomID][c] = cancel
 
@@ -117,9 +126,11 @@ func (h *apiHandler) handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	delete(h.subscribers[rawRoomID], c)
 	h.mu.Unlock()
+	log.Println("Client disconnected:", r.RemoteAddr)
 }
 
 func (h *apiHandler) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("---------------------------------- handleCreateRoom")
 	type _body struct {
 		Theme string `json:"theme"`
 	}
@@ -143,6 +154,7 @@ func (h *apiHandler) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 	data, _ := json.Marshal(response{ID: roomID.String()})
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+	log.Println("Room created with ID:", roomID.String())
 }
 func (h *apiHandler) handleGetRooms(w http.ResponseWriter, r *http.Request)               {}
 func (h *apiHandler) handleCreateMessage(w http.ResponseWriter, r *http.Request)          {}

@@ -57,6 +57,9 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 			r.Post("/", a.handleCreateRoom)
 			r.Get("/", a.handleGetRooms)
 
+			// r.Route("/{room_id}", func(r chi.Router) {
+			// 	r.Get("/", a.handleGetRoom)
+
 			r.Route("/{room_id}/messages", func(r chi.Router) {
 				r.Post("/", a.handleCreateRoomMessage)
 				r.Get("/", a.handleGetMessages)
@@ -70,6 +73,7 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 			})
 		})
 	})
+	// })
 
 	a.r = r
 	return a
@@ -206,6 +210,15 @@ func (h *apiHandler) handleGetRooms(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
+
+// func (h apiHandler) handleGetRoom(w http.ResponseWriter, r *http.Request) {
+// 	room, _, _, ok := h.readRoom(w, r)
+// 	if !ok {
+// 		return
+// 	}
+
+// 	sendJSON(w, room)
+// }
 
 func (h *apiHandler) handleCreateRoomMessage(w http.ResponseWriter, r *http.Request) {
 	rawRoomID := chi.URLParam(r, "room_id")

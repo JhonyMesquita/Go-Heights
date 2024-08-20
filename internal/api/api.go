@@ -62,7 +62,7 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 
 				r.Route("/{room_id}/messages", func(r chi.Router) {
 					r.Post("/", a.handleCreateRoomMessage)
-					r.Get("/", a.handleGetMessages)
+					r.Get("/", a.handleGetRoomMessages)
 
 					r.Route("/{message_id}", func(r chi.Router) {
 						r.Get("/", a.handleGetRoomMessage)
@@ -80,8 +80,25 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 }
 
 const (
-	MessageKindMessageCreated = "message_created"
+	MessageKindMessageCreated          = "message_created"
+	MessageKindMessageRactionIncreased = "message_reaction_increased"
+	MessageKindMessageRactionDecreased = "message_reaction_decreased"
+	MessageKindMessageAnswered         = "message_answered"
 )
+
+type MessageMessageReactionIncreased struct {
+	ID    string `json:"id"`
+	Count int64  `json:"count"`
+}
+
+type MessageMessageReactionDecreased struct {
+	ID    string `json:"id"`
+	Count int64  `json:"count"`
+}
+
+type MessageMessageAnswered struct {
+	ID string `json:"id"`
+}
 
 type MessageMessageCreated struct {
 	ID      string `json:"id"`
@@ -272,8 +289,52 @@ func (h *apiHandler) handleCreateRoomMessage(w http.ResponseWriter, r *http.Requ
 		},
 	})
 }
-func (h *apiHandler) handleGetMessages(w http.ResponseWriter, r *http.Request)            {}
-func (h *apiHandler) handleGetRoomMessage(w http.ResponseWriter, r *http.Request)         {}
+func (h *apiHandler) handleGetRoomMessages(w http.ResponseWriter, r *http.Request) {
+	_, _, roomID, ok := h.readRoom(w, r)
+	if !ok {
+		return
+	}
+
+	messages, err := h.q.GetRoomMessagens(r.Context(), roomID)
+	if err != nil {
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		slog.Error("failed to get room messages", "error", err)
+		return
+	}
+
+	if messages == nil {
+		messages = []pgstore.Message{}
+	}
+
+	sendJSON(w, messages)
+}
+func (h *apiHandler) handleGetRoomMessage(w http.ResponseWriter, r *http.Request) {
+	_, _, _, ok := h.readRoom(w, r)
+	if !ok {
+		return
+	}
+
+	rawMessageID := chi.URLParam(r, "message_id")
+	messageID, err := uuid.Parse(rawMessageID)
+	if err != nil {
+		http.Error(w, "invalid message id", http.StatusBadRequest)
+		return
+	}
+
+	messages, err := h.q.GetMessage(r.Context(), messageID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "message not found", http.StatusBadRequest)
+			return
+		}
+
+		slog.Error("failed to get message", "error", err)
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	sendJSON(w, messages)
+}
 func (h *apiHandler) handleReactToMessage(w http.ResponseWriter, r *http.Request)         {}
 func (h *apiHandler) handleRemoveReactFromMessage(w http.ResponseWriter, r *http.Request) {}
 func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.Request)  {}

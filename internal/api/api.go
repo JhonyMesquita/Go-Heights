@@ -348,7 +348,7 @@ func (h *apiHandler) handleReactToMessage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	count, err := h.q.ReactToMessage(r.Context(), id)
+	count, err := h.q.ReacToMessage(r.Context(), id)
 	if err != nil {
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		slog.Error("failed to react to message", "error", err)
@@ -370,5 +370,39 @@ func (h *apiHandler) handleReactToMessage(w http.ResponseWriter, r *http.Request
 		},
 	})
 }
-func (h *apiHandler) handleRemoveReactFromMessage(w http.ResponseWriter, r *http.Request) {}
-func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.Request)  {}
+func (h *apiHandler) handleRemoveReactFromMessage(w http.ResponseWriter, r *http.Request) {
+	_, rawRoomID, _, ok := h.readRoom(w, r)
+	if !ok {
+		return
+	}
+
+	rawID := chi.URLParam(r, "message_id")
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		http.Error(w, "invalid message id", http.StatusBadRequest)
+		return
+	}
+
+	count, err := h.q.RemoveReactionFromMessage(r.Context(), id)
+	if err != nil {
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		slog.Error("failed to react to message", "error", err)
+		return
+	}
+
+	type response struct {
+		Count int64 `json:"count"`
+	}
+
+	sendJSON(w, response{Count: count})
+
+	go h.notifyClients(Message{
+		Kind:   MessageKindMessageRactionDecreased,
+		RoomID: rawRoomID,
+		Value: MessageMessageReactionDecreased{
+			ID:    rawID,
+			Count: count,
+		},
+	})
+}
+func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.Request) {}

@@ -407,33 +407,33 @@ func (h *apiHandler) handleRemoveReactFromMessage(w http.ResponseWriter, r *http
 	})
 }
 
-func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.Request) {
-	_, rawRoomID, _, ok := h.readRoom(w, r)
-	if !ok {
-		return
-	}
+// func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.Request) {
+// 	_, rawRoomID, _, ok := h.readRoom(w, r)
+// 	if !ok {
+// 		return
+// 	}
 
-	rawID := chi.URLParam(r, "message_id")
-	id, err := uuid.Parse(rawID)
-	if err != nil {
-		http.Error(w, "invalid message id", http.StatusBadRequest)
-		return
-	}
+// 	rawID := chi.URLParam(r, "message_id")
+// 	id, err := uuid.Parse(rawID)
+// 	if err != nil {
+// 		http.Error(w, "invalid message id", http.StatusBadRequest)
+// 		return
+// 	}
 
-	_, err = h.q.MarkMessageAsAnswered(r.Context(), id)
-	if err != nil {
-		http.Error(w, "something went wrong", http.StatusInternalServerError)
-		slog.Error("failed to react to message", "error", err)
-		return
-	}
+// 	_, err = h.q.MarkMessageAsAnswered(r.Context(), id)
+// 	if err != nil {
+// 		http.Error(w, "something went wrong", http.StatusInternalServerError)
+// 		slog.Error("failed to react to message", "error", err)
+// 		return
+// 	}
 
-	w.WriteHeader(http.StatusOK)
+// 	w.WriteHeader(http.StatusOK)
 
-	go h.notifyClients(Message{
-		Kind:   MessageKindMessageAnswered,
-		RoomID: rawRoomID,
-		Value: MessageMessageAnswered{
-			ID: rawID,
-		},
-	})
-}
+// 	go h.notifyClients(Message{
+// 		Kind:   MessageKindMessageAnswered,
+// 		RoomID: rawRoomID,
+// 		Value: MessageMessageAnswered{
+// 			ID: rawID,
+// 		},
+// 	})
+// }

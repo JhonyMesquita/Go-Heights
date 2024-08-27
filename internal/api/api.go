@@ -430,8 +430,9 @@ func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 
 	go h.notifyClients(Message{
-		Kind:   MessageKindMessageAnswered,
-		RoomID: rawRoomID,
+		Kind:    MessageKindMessageAnswered,
+		Message: MessageMessageAnswered,
+		RoomID:  rawRoomID,
 		Value: MessageMessageAnswered{
 			ID: rawID,
 		},

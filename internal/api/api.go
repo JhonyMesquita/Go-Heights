@@ -60,7 +60,7 @@ func NewHandler(q *pgstore.Queries) http.Handler {
 			r.Route("/{room_id}", func(r chi.Router) {
 				r.Get("/", a.handleGetRoom)
 
-				r.Route("/{room_id}/messages", func(r chi.Router) {
+				r.Route("/messages", func(r chi.Router) {
 					r.Post("/", a.handleCreateRoomMessage)
 					r.Get("/", a.handleGetRoomMessages)
 
@@ -206,6 +206,7 @@ func (h *apiHandler) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *apiHandler) handleGetRooms(w http.ResponseWriter, r *http.Request) {
+
 	rooms, err := h.q.GetRooms(r.Context())
 	if err != nil {
 		slog.Error("failed to get rooms", "error", err)
@@ -238,6 +239,7 @@ func (h *apiHandler) handleGetRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *apiHandler) handleCreateRoomMessage(w http.ResponseWriter, r *http.Request) {
+
 	rawRoomID := chi.URLParam(r, "room_id")
 	roomID, err := uuid.Parse(rawRoomID)
 	if err != nil {
@@ -430,9 +432,8 @@ func (h *apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 
 	go h.notifyClients(Message{
-		Kind:    MessageKindMessageAnswered,
-		Message: MessageMessageAnswered,
-		RoomID:  rawRoomID,
+		Kind:   MessageKindMessageAnswered,
+		RoomID: rawRoomID,
 		Value: MessageMessageAnswered{
 			ID: rawID,
 		},
